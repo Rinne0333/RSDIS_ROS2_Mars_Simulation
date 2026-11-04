@@ -8,26 +8,34 @@
 #include <string>
 #include <thread>
 
+#include "geometry_msgs/msg/point.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64.hpp"
 
 class IngenuityTeleop : public rclcpp::Node
 {
 public:
 	IngenuityTeleop()
+	#ifdef INGENUITY_FLIGHT_CONTROLLER
+	: Node("ingenuity_flight_controller")
+	#else
 	: Node("ingenuity_teleop")
+	#endif
 	{
 		gravity_ = declare_parameter("gravity", 3.71);
 		// The model's main body mass and prior stable-hover command support this estimate.
 		mass_kg_ = declare_parameter("mass_kg", 16.0);
 		max_thrust_per_rotor_ = declare_parameter("max_thrust_per_rotor", 100.0);
 		takeoff_thrust_per_rotor_ = declare_parameter("takeoff_thrust_per_rotor", 35.0);
+		takeoff_boost_height_ = declare_parameter("takeoff_boost_height", 0.25);
 		hover_thrust_per_rotor_ = declare_parameter("hover_thrust_per_rotor", 30.0);
 		hover_height_gain_ = declare_parameter("hover_height_gain", 0.8);
 		hover_vertical_damping_ = declare_parameter("hover_vertical_damping", 1.5);
 		max_hover_acceleration_ = declare_parameter("max_hover_acceleration", 1.0);
 		arrival_tolerance_ = declare_parameter("arrival_tolerance", 0.03);
+		arrival_speed_tolerance_ = declare_parameter("arrival_speed_tolerance", 0.15);
 		position_gain_xy_ = declare_parameter("position_gain_xy", 0.8);
 		velocity_gain_xy_ = declare_parameter("velocity_gain_xy", 1.2);
 		position_gain_z_ = declare_parameter("position_gain_z", 0.6);
@@ -66,6 +74,39 @@ public:
 			[this](const nav_msgs::msg::Odometry::SharedPtr message) {
 				updateOdometry(*message);
 			});
+		joint_state_subscription_ = create_subscription<sensor_msgs::msg::JointState>(
+			"/ingenuity/joint_states", 10,
+			[this](const sensor_msgs::msg::JointState::SharedPtr message) {
+				std::lock_guard<std::mutex> lock(state_mutex_);
+				for (std::size_t index = 0; index < message->name.size() &&
+					index < message->velocity.size(); ++index) {
+					if (message->name[index] == "MHS_TopBlades_v16") {
+						rotor_top_angular_velocity_ = message->velocity[index];
+						have_top_rotor_speed_ = true;
+					} else if (message->name[index] == "MHS_BottomBlades_v16") {
+						rotor_bottom_angular_velocity_ = message->velocity[index];
+						have_bottom_rotor_speed_ = true;
+					}
+				}
+			});
+		#ifdef INGENUITY_FLIGHT_CONTROLLER
+		position_target_subscription_ = create_subscription<geometry_msgs::msg::Point>(
+			"/ingenuity/position_target", 10,
+			[this](const geometry_msgs::msg::Point::SharedPtr message) {
+				std::lock_guard<std::mutex> lock(state_mutex_);
+				if (!have_odometry_) {
+					return;
+				}
+				target_x_ = message->x;
+				target_y_ = message->y;
+				target_z_ = message->z;
+				takeoff_active_ = target_z_ > position_z_ + arrival_tolerance_ &&
+					(position_z_ - ground_z_) < xy_enable_height_;
+				takeoff_boost_active_ = takeoff_active_;
+				RCLCPP_INFO(get_logger(), "ROS position target: x=%.2f y=%.2f z=%.2f m",
+					target_x_, target_y_, target_z_);
+			});
+		#endif
 		control_timer_ = create_wall_timer(
 			std::chrono::milliseconds(50), [this]() { controlStep(); });
 	}
@@ -89,6 +130,7 @@ public:
 				target_y_ = position_y_;
 				target_z_ = position_z_;
 				takeoff_active_ = false;
+				takeoff_boost_active_ = false;
 				RCLCPP_INFO(get_logger(), "Holding current position");
 			}
 			return true;
@@ -134,6 +176,8 @@ public:
 		if (axis == 'z') {
 			takeoff_active_ = target_z_ > position_z_ + arrival_tolerance_ &&
 				(position_z_ - ground_z_) < xy_enable_height_;
+			takeoff_boost_active_ = takeoff_active_;
+			takeoff_boost_active_ = takeoff_active_;
 		}
 		RCLCPP_INFO(get_logger(), "Target position: x=%.2f y=%.2f z=%.2f m",
 			target_x_, target_y_, target_z_);
@@ -188,6 +232,7 @@ private:
 				velocity_z_ += av * ((pose.position.z - position_z_) / dt - velocity_z_);
 				rate_roll_ += ar * (wrapPi(new_roll - roll_) / dt - rate_roll_);
 				rate_pitch_ += ar * (wrapPi(new_pitch - pitch_) / dt - rate_pitch_);
+				rate_yaw_ += ar * (wrapPi(new_yaw - yaw_) / dt - rate_yaw_);
 			}
 		}
 		prev_stamp_ = stamp;
@@ -212,8 +257,11 @@ private:
 
 	void controlStep()
 	{
-		double px, py, pz, vx, vy, vz, tx, ty, tz, roll, pitch, yaw, wr, wp, ground_z;
+		double px, py, pz, vx, vy, vz, tx, ty, tz, roll, pitch, yaw, wr, wp, wy, ground_z;
+		double rotor_top_angular_velocity, rotor_bottom_angular_velocity;
+		bool have_top_rotor_speed, have_bottom_rotor_speed;
 		bool takeoff_active;
+		bool takeoff_boost_active;
 		{
 			std::lock_guard<std::mutex> lock(state_mutex_);
 			if (!have_odometry_) {
@@ -224,16 +272,33 @@ private:
 			tx = target_x_; ty = target_y_; tz = target_z_;
 			roll = roll_; pitch = pitch_; yaw = yaw_;
 			wr = rate_roll_; wp = rate_pitch_;
+			wy = rate_yaw_;
+			rotor_top_angular_velocity = rotor_top_angular_velocity_;
+			rotor_bottom_angular_velocity = rotor_bottom_angular_velocity_;
+			have_top_rotor_speed = have_top_rotor_speed_;
+			have_bottom_rotor_speed = have_bottom_rotor_speed_;
 			ground_z = ground_z_;
 			takeoff_active = takeoff_active_;
+			takeoff_boost_active = takeoff_boost_active_;
 		}
-		if (takeoff_active && pz >= tz - arrival_tolerance_) {
+		if (takeoff_boost_active && pz - ground_z >= takeoff_boost_height_) {
+			std::lock_guard<std::mutex> lock(state_mutex_);
+			if (takeoff_boost_active_) {
+				takeoff_boost_active_ = false;
+				takeoff_boost_active = false;
+				RCLCPP_INFO(get_logger(), "Liftoff boost complete at z=%.2f m; switching to climb-speed control", pz);
+			}
+		}
+		if (takeoff_active && std::abs(tz - pz) <= arrival_tolerance_ &&
+			std::abs(vz) <= arrival_speed_tolerance_) {
 			std::lock_guard<std::mutex> lock(state_mutex_);
 			if (takeoff_active_ && std::abs(target_z_ - tz) < 1e-6) {
 				target_x_ = position_x_;
 				target_y_ = position_y_;
 				takeoff_active_ = false;
+				takeoff_boost_active_ = false;
 				takeoff_active = false;
+				takeoff_boost_active = false;
 				tx = target_x_;
 				ty = target_y_;
 				RCLCPP_INFO(get_logger(),
@@ -259,18 +324,24 @@ private:
 		}
 
 		// Takeoff thrust is fixed; after reaching altitude, hover baseline is corrected by height and vertical speed.
+		const double height_error = tz - pz;
+		const double braking_speed = std::sqrt(
+			2.0 * max_hover_acceleration_ * std::abs(height_error));
+		const double desired_vertical_speed = std::copysign(
+			std::min({max_climb_rate_, position_gain_z_ * std::abs(height_error), braking_speed}),
+			height_error);
 		const double hover_acceleration = std::clamp(
-			hover_height_gain_ * (tz - pz) - hover_vertical_damping_ * vz,
+			velocity_gain_z_ * (desired_vertical_speed - vz),
 			-max_hover_acceleration_, max_hover_acceleration_);
-		const double lift = takeoff_active ?
+		const double lift = takeoff_boost_active ?
 			gravity_ + 2.0 * (takeoff_thrust_per_rotor_ - hover_thrust_per_rotor_) / mass_kg_ :
 			gravity_ + hover_acceleration;
 
-		// Keep takeoff vertical: level the body first, then engage XY position hold in hover.
+		// Hold the launch position during ascent as soon as the vehicle is clear of the ground.
 		const bool level = std::abs(roll) < 0.2 && std::abs(pitch) < 0.2;
 		double ax = 0.0;
 		double ay = 0.0;
-		if (!takeoff_active && airborne && level) {
+		if (airborne && level) {
 			ax = std::clamp(
 				position_gain_xy_ * (tx - px) - velocity_gain_xy_ * vx,
 				-max_acceleration_xy_, max_acceleration_xy_);
@@ -300,16 +371,21 @@ private:
 		const double hover_thrust = std::clamp(
 			(hover_thrust_per_rotor_ + mass_kg_ * hover_acceleration / 2.0) / tilt_cos,
 			0.0, max_thrust_per_rotor_);
-		const double rotor_thrust = takeoff_active ?
+		const double rotor_thrust = takeoff_boost_active ?
 			std::clamp(takeoff_thrust_per_rotor_, 0.0, max_thrust_per_rotor_) : hover_thrust;
 
 		RCLCPP_INFO_THROTTLE(
 			get_logger(), *get_clock(), 1000,
 			"mode=%s xy=(%.2f,%.2f)/(%.2f,%.2f) vxy=(%.2f,%.2f) z=%.2f/%.2f vz=%.2f "
-			"rpy=(%.3f %.3f %.3f) swash=(%.3f %.3f) thrust=%.1f N/rotor",
-			takeoff_active ? "takeoff" : "hover",
+			"rpy=(%.3f %.3f %.3f) yaw_rate=%.3f rad/s rotor_rpm=(%.0f,%.0f) valid=(%d,%d) "
+			"swash=(%.3f %.3f) thrust=%.1f N/rotor",
+			takeoff_boost_active ? "takeoff_boost" : (takeoff_active ? "climb" : "hover"),
 			px, py, tx, ty, vx, vy, pz, tz, vz,
-			roll, pitch, yaw, swashplate_1, swashplate_2, rotor_thrust);
+			roll, pitch, yaw, wy,
+			rotor_top_angular_velocity * 60.0 / (2.0 * M_PI),
+			rotor_bottom_angular_velocity * 60.0 / (2.0 * M_PI),
+			have_top_rotor_speed, have_bottom_rotor_speed,
+			swashplate_1, swashplate_2, rotor_thrust);
 
 		publish(top_thrust_publisher_, rotor_thrust);
 		publish(bottom_thrust_publisher_, rotor_thrust);
@@ -329,12 +405,15 @@ private:
 	std::mutex state_mutex_;
 	bool have_odometry_{false};
 	bool takeoff_active_{false};
+	bool takeoff_boost_active_{false};
 	double prev_stamp_{0.0};
 	double position_x_{0.0}, position_y_{0.0}, position_z_{0.0};
 	double velocity_x_{0.0}, velocity_y_{0.0}, velocity_z_{0.0};
 	double target_x_{0.0}, target_y_{0.0}, target_z_{0.0};
 	double roll_{0.0}, pitch_{0.0}, yaw_{0.0};
-	double rate_roll_{0.0}, rate_pitch_{0.0};
+	double rate_roll_{0.0}, rate_pitch_{0.0}, rate_yaw_{0.0};
+	double rotor_top_angular_velocity_{0.0}, rotor_bottom_angular_velocity_{0.0};
+	bool have_top_rotor_speed_{false}, have_bottom_rotor_speed_{false};
 	double ground_z_{0.0};
 	double z_integral_{0.0};
 
@@ -342,11 +421,13 @@ private:
 	double mass_kg_{16.0};
 	double max_thrust_per_rotor_{100.0};
 	double takeoff_thrust_per_rotor_{35.0};
+	double takeoff_boost_height_{0.25};
 	double hover_thrust_per_rotor_{30.0};
 	double hover_height_gain_{0.8};
 	double hover_vertical_damping_{1.5};
 	double max_hover_acceleration_{1.0};
 	double arrival_tolerance_{0.03};
+	double arrival_speed_tolerance_{0.15};
 	double position_gain_xy_{0.8};
 	double velocity_gain_xy_{1.2};
 	double position_gain_z_{0.6};
@@ -372,6 +453,10 @@ private:
 	rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr swashplate_1_publisher_;
 	rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr swashplate_2_publisher_;
 	rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_subscription_;
+	rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscription_;
+	#ifdef INGENUITY_FLIGHT_CONTROLLER
+	rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr position_target_subscription_;
+	#endif
 	rclcpp::TimerBase::SharedPtr control_timer_;
 };
 
@@ -379,6 +464,7 @@ int main(int argc, char ** argv)
 {
 	rclcpp::init(argc, argv);
 	auto node = std::make_shared<IngenuityTeleop>();
+	#ifndef INGENUITY_FLIGHT_CONTROLLER
 	const std::weak_ptr<IngenuityTeleop> weak_node = node;
 	std::thread([weak_node]() {
 		IngenuityTeleop::printHelp();
@@ -390,6 +476,7 @@ int main(int argc, char ** argv)
 			}
 		}
 	}).detach();
+	#endif
 	rclcpp::spin(node);
 	rclcpp::shutdown();
 	return 0;
