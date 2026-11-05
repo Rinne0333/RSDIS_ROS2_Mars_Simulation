@@ -21,15 +21,15 @@ Then start the autonomous area scan in a third sourced terminal:
 ros2 run drone_control ingenuity_area_scan
 ```
 
-The scanner climbs to the absolute world altitude `scan_altitude` (default 15 m),
-waits until vertical speed settles, then flies a serpentine rectangle centered
-on the starting x/y position. The conservative shakedown defaults are 10 m by
-10 m with 2 m lane spacing. Set dimensions to the known safe terrain bounds for
-a full survey, for example:
+The scanner climbs to the absolute world altitude `scan_altitude` (default
+15 m), waits until vertical speed settles, then flies a serpentine rectangle
+centered on the starting x/y position. The conservative shakedown defaults are
+10 m by 10 m with 2 m lane spacing. Set the altitude and dimensions to known
+safe values for your test area, for example:
 
 ```bash
 ros2 run drone_control ingenuity_area_scan --ros-args \
-	-p scan_altitude:=15.0 -p scan_length:=80.0 -p scan_width:=60.0 \
+	-p scan_altitude:=5.0 -p scan_length:=10.0 -p scan_width:=10.0 \
 	-p lane_spacing:=4.0
 ```
 

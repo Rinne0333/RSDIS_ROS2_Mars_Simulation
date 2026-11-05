@@ -176,7 +176,7 @@ private:
   double previous_stamp_{0.0};
   double center_x_{0.0};
   double center_y_{0.0};
-  double scan_altitude_{15.0};
+  double scan_altitude_{5.0};
   double scan_length_{10.0};
   double scan_width_{10.0};
   double lane_spacing_{2.0};

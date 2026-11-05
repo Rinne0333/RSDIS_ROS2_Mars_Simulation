@@ -50,10 +50,10 @@ public:
 		max_climb_rate_ = declare_parameter("max_climb_rate", 0.40);
 		att_kp_ = declare_parameter("att_kp", 1.0);
 		att_kd_ = declare_parameter("att_kd", 0.3);
-		swash1_sign_ = declare_parameter("swash1_sign", -1.0);
-		swash2_sign_ = declare_parameter("swash2_sign", 1.0);
+		swash1_sign_ = declare_parameter("swash1_sign", 1.0);
+		swash2_sign_ = declare_parameter("swash2_sign", -1.0);
 		max_swash_rad_ = declare_parameter("max_swash_rad", 0.3);
-		xy_enable_height_ = declare_parameter("xy_enable_height", 0.5);
+		xy_enable_height_ = declare_parameter("xy_enable_height", 0.25);
 		// Your odometry reports roll = +-pi at rest (body frame is z-down).
 		// This offset is removed so roll/pitch are relative to "level".
 		roll_offset_rad_ = declare_parameter("roll_offset_rad", M_PI);
@@ -78,20 +78,33 @@ public:
 			"/ingenuity/joint_states", 10,
 			[this](const sensor_msgs::msg::JointState::SharedPtr message) {
 				std::lock_guard<std::mutex> lock(state_mutex_);
-				for (std::size_t index = 0; index < message->name.size() &&
-					index < message->velocity.size(); ++index) {
+				for (std::size_t index = 0; index < message->name.size(); ++index) {
 					if (message->name[index] == "MHS_TopBlades_v16") {
-						rotor_top_angular_velocity_ = message->velocity[index];
-						have_top_rotor_speed_ = true;
+						if (index < message->velocity.size()) {
+							rotor_top_angular_velocity_ = message->velocity[index];
+							have_top_rotor_speed_ = true;
+						}
 					} else if (message->name[index] == "MHS_BottomBlades_v16") {
-						rotor_bottom_angular_velocity_ = message->velocity[index];
-						have_bottom_rotor_speed_ = true;
+						if (index < message->velocity.size()) {
+							rotor_bottom_angular_velocity_ = message->velocity[index];
+							have_bottom_rotor_speed_ = true;
+						}
+					} else if (message->name[index] == "Swashplate1_Joint") {
+						if (index < message->position.size()) {
+							swashplate_1_position_ = message->position[index];
+							have_swashplate_1_position_ = true;
+						}
+					} else if (message->name[index] == "Swashplate2_Joint") {
+						if (index < message->position.size()) {
+							swashplate_2_position_ = message->position[index];
+							have_swashplate_2_position_ = true;
+						}
 					}
 				}
 			});
 		#ifdef INGENUITY_FLIGHT_CONTROLLER
 		position_target_subscription_ = create_subscription<geometry_msgs::msg::Point>(
-			"/ingenuity/position_target", 10,
+			"/ingenuity/position_target", 5,
 			[this](const geometry_msgs::msg::Point::SharedPtr message) {
 				std::lock_guard<std::mutex> lock(state_mutex_);
 				if (!have_odometry_) {
@@ -100,8 +113,13 @@ public:
 				target_x_ = message->x;
 				target_y_ = message->y;
 				target_z_ = message->z;
-				takeoff_active_ = target_z_ > position_z_ + arrival_tolerance_ &&
+				const bool launching_from_ground =
+					target_z_ > position_z_ + arrival_tolerance_ &&
 					(position_z_ - ground_z_) < xy_enable_height_;
+				if (launching_from_ground) {
+					ground_z_ = position_z_;
+				}
+				takeoff_active_ = launching_from_ground;
 				takeoff_boost_active_ = takeoff_active_;
 				RCLCPP_INFO(get_logger(), "ROS position target: x=%.2f y=%.2f z=%.2f m",
 					target_x_, target_y_, target_z_);
@@ -174,9 +192,13 @@ public:
 			*target += operation == "+=" ? value : -value;
 		}
 		if (axis == 'z') {
-			takeoff_active_ = target_z_ > position_z_ + arrival_tolerance_ &&
+			const bool launching_from_ground =
+				target_z_ > position_z_ + arrival_tolerance_ &&
 				(position_z_ - ground_z_) < xy_enable_height_;
-			takeoff_boost_active_ = takeoff_active_;
+			if (launching_from_ground) {
+				ground_z_ = position_z_;
+			}
+			takeoff_active_ = launching_from_ground;
 			takeoff_boost_active_ = takeoff_active_;
 		}
 		RCLCPP_INFO(get_logger(), "Target position: x=%.2f y=%.2f z=%.2f m",
@@ -259,7 +281,9 @@ private:
 	{
 		double px, py, pz, vx, vy, vz, tx, ty, tz, roll, pitch, yaw, wr, wp, wy, ground_z;
 		double rotor_top_angular_velocity, rotor_bottom_angular_velocity;
+		double swashplate_1_position, swashplate_2_position;
 		bool have_top_rotor_speed, have_bottom_rotor_speed;
+		bool have_swashplate_1_position, have_swashplate_2_position;
 		bool takeoff_active;
 		bool takeoff_boost_active;
 		{
@@ -277,6 +301,10 @@ private:
 			rotor_bottom_angular_velocity = rotor_bottom_angular_velocity_;
 			have_top_rotor_speed = have_top_rotor_speed_;
 			have_bottom_rotor_speed = have_bottom_rotor_speed_;
+			swashplate_1_position = swashplate_1_position_;
+			swashplate_2_position = swashplate_2_position_;
+			have_swashplate_1_position = have_swashplate_1_position_;
+			have_swashplate_2_position = have_swashplate_2_position_;
 			ground_z = ground_z_;
 			takeoff_active = takeoff_active_;
 			takeoff_boost_active = takeoff_boost_active_;
@@ -337,11 +365,10 @@ private:
 			gravity_ + 2.0 * (takeoff_thrust_per_rotor_ - hover_thrust_per_rotor_) / mass_kg_ :
 			gravity_ + hover_acceleration;
 
-		// Hold the launch position during ascent as soon as the vehicle is clear of the ground.
-		const bool level = std::abs(roll) < 0.2 && std::abs(pitch) < 0.2;
+		// Keep requesting horizontal correction while airborne, including during attitude recovery.
 		double ax = 0.0;
 		double ay = 0.0;
-		if (airborne && level) {
+		if (airborne) {
 			ax = std::clamp(
 				position_gain_xy_ * (tx - px) - velocity_gain_xy_ * vx,
 				-max_acceleration_xy_, max_acceleration_xy_);
@@ -377,15 +404,17 @@ private:
 		RCLCPP_INFO_THROTTLE(
 			get_logger(), *get_clock(), 1000,
 			"mode=%s xy=(%.2f,%.2f)/(%.2f,%.2f) vxy=(%.2f,%.2f) z=%.2f/%.2f vz=%.2f "
-			"rpy=(%.3f %.3f %.3f) yaw_rate=%.3f rad/s rotor_rpm=(%.0f,%.0f) valid=(%d,%d) "
-			"swash=(%.3f %.3f) thrust=%.1f N/rotor",
+			"a_xy=(%.2f,%.2f) desired_rp=(%.3f,%.3f) rpy=(%.3f %.3f %.3f) "
+			"yaw_rate=%.3f rad/s rotor_rpm=(%.0f,%.0f) valid=(%d,%d) "
+			"swash_cmd=(%.3f,%.3f) swash_pos=(%.3f,%.3f) valid=(%d,%d) thrust=%.1f N/rotor",
 			takeoff_boost_active ? "takeoff_boost" : (takeoff_active ? "climb" : "hover"),
 			px, py, tx, ty, vx, vy, pz, tz, vz,
-			roll, pitch, yaw, wy,
+			ax, ay, des_roll, des_pitch, roll, pitch, yaw, wy,
 			rotor_top_angular_velocity * 60.0 / (2.0 * M_PI),
 			rotor_bottom_angular_velocity * 60.0 / (2.0 * M_PI),
 			have_top_rotor_speed, have_bottom_rotor_speed,
-			swashplate_1, swashplate_2, rotor_thrust);
+			swashplate_1, swashplate_2, swashplate_1_position, swashplate_2_position,
+			have_swashplate_1_position, have_swashplate_2_position, rotor_thrust);
 
 		publish(top_thrust_publisher_, rotor_thrust);
 		publish(bottom_thrust_publisher_, rotor_thrust);
@@ -414,6 +443,8 @@ private:
 	double rate_roll_{0.0}, rate_pitch_{0.0}, rate_yaw_{0.0};
 	double rotor_top_angular_velocity_{0.0}, rotor_bottom_angular_velocity_{0.0};
 	bool have_top_rotor_speed_{false}, have_bottom_rotor_speed_{false};
+	double swashplate_1_position_{0.0}, swashplate_2_position_{0.0};
+	bool have_swashplate_1_position_{false}, have_swashplate_2_position_{false};
 	double ground_z_{0.0};
 	double z_integral_{0.0};
 
@@ -440,10 +471,10 @@ private:
 	double max_climb_rate_{0.40};
 	double att_kp_{1.0};
 	double att_kd_{0.3};
-	double swash1_sign_{-1.0};
-	double swash2_sign_{1.0};
+	double swash1_sign_{1.0};
+	double swash2_sign_{-1.0};
 	double max_swash_rad_{0.3};
-	double xy_enable_height_{0.5};
+		double xy_enable_height_{0.25};
 	double roll_offset_rad_{M_PI};
 	double vel_tau_{0.15};
 	double rate_tau_{0.05};
