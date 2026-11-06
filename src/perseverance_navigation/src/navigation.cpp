@@ -15,6 +15,7 @@ using namespace std::chrono_literals;
 PerseveranceNavigation::PerseveranceNavigation() : Node("perseverance_navigation")
 {
     loadParameters();
+    setupParameterCallbacks();
     setupRosInterfaces();
 
     RCLCPP_INFO(
@@ -79,6 +80,123 @@ void PerseveranceNavigation::loadParameters()
     {
         throw std::invalid_argument(
             "Controller gains, limits and tolerances must be positive"
+        );
+    }
+}
+
+// =============================================================
+// Dynamic Parameters
+// =============================================================
+
+void PerseveranceNavigation::setupParameterCallbacks()
+{
+    // Validate parameters before accepting changes
+    parameter_validation_handle_ =
+        this->add_on_set_parameters_callback(
+            [this](const std::vector<rclcpp::Parameter> &parameters)
+            {
+                return validateParameters(parameters);
+            }
+        );
+
+    // Update internal variables after successful changes
+    parameter_update_handle_ =
+        this->add_post_set_parameters_callback(
+            [this](const std::vector<rclcpp::Parameter> &parameters)
+            {
+                updateParameters(parameters);
+            }
+        );
+}
+
+rcl_interfaces::msg::SetParametersResult 
+PerseveranceNavigation::validateParameters(const std::vector<rclcpp::Parameter> &parameters) const
+{
+    rcl_interfaces::msg::SetParametersResult result;
+
+    result.successful = true;
+
+    for (const auto &param : parameters)
+    {
+        const std::string name = param.get_name();
+
+        const bool is_controller_parameter =
+            name == "kp_linear" ||
+            name == "kp_angular" ||
+            name == "max_linear_speed" ||
+            name == "max_angular_speed" ||
+            name == "distance_tolerance" ||
+            name == "angle_tolerance";
+
+        if (!is_controller_parameter)
+        {
+            continue;
+        }
+
+        // All controller parameters must be doubles
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE)
+        {
+            result.successful = false;
+            result.reason = name + " must be a double";
+            return result;
+        }
+
+        const double value = param.as_double();
+
+        // Reject invalid controller values
+        if (!std::isfinite(value) || value <= 0.0)
+        {
+            result.successful = false;
+            result.reason = name + " must be finite and positive";
+            return result;
+        }
+    }
+
+    return result;
+}
+
+void PerseveranceNavigation::updateParameters(
+    const std::vector<rclcpp::Parameter> &parameters
+)
+{
+    for (const auto &param : parameters)
+    {
+        const std::string name = param.get_name();
+
+        if (name == "kp_linear")
+        {
+            kp_linear_ = param.as_double();
+        }
+        else if (name == "kp_angular")
+        {
+            kp_angular_ = param.as_double();
+        }
+        else if (name == "max_linear_speed")
+        {
+            max_linear_speed_ = param.as_double();
+        }
+        else if (name == "max_angular_speed")
+        {
+            max_angular_speed_ = param.as_double();
+        }
+        else if (name == "distance_tolerance")
+        {
+            distance_tolerance_ = param.as_double();
+        }
+        else if (name == "angle_tolerance")
+        {
+            angle_tolerance_ = param.as_double();
+        }
+        else
+        {
+            continue;
+        }
+
+        RCLCPP_INFO(
+            get_logger(),
+            "Parameter updated: %s = %.3f",
+            name.c_str(),
+            param.as_double()
         );
     }
 }

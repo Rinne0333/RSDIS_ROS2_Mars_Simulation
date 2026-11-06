@@ -3,10 +3,12 @@
 
 #include <chrono>
 #include <memory>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 
 class PerseveranceNavigation : public rclcpp::Node
 {
@@ -36,6 +38,20 @@ private:
     double distance_tolerance_ = 0.2;
     double angle_tolerance_ = 0.2;
 
+    // =========================================================
+    // Dynamic Parameters
+    // =========================================================
+
+    void setupParameterCallbacks();
+
+    rcl_interfaces::msg::SetParametersResult validateParameters(
+        const std::vector<rclcpp::Parameter> &parameters
+    ) const;
+
+    void updateParameters(
+        const std::vector<rclcpp::Parameter> &parameters
+    );
+
 
     // =========================================================
     // Robot State
@@ -64,7 +80,11 @@ private:
 
     rclcpp::TimerBase::SharedPtr control_timer_;
 
+    rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+        parameter_validation_handle_;
 
+    rclcpp::node_interfaces::PostSetParametersCallbackHandle::SharedPtr
+        parameter_update_handle_;
     // =========================================================
     // Odometry
     // =========================================================
