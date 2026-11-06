@@ -11,6 +11,37 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 
+
+# Navigation executable
+add_executable(navigation_node
+    src/navigation_node.cpp
+    src/navigation.cpp
+)
+
+# C++17
+target_compile_features(navigation_node
+    PRIVATE cxx_std_17
+)
+
+# Header files
+target_include_directories(navigation_node
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# ROS 2 dependencies
+ament_target_dependencies(navigation_node
+    rclcpp
+    geometry_msgs
+    nav_msgs
+)
+
+# Install executable
+install(TARGETS
+    navigation_node
+    DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
