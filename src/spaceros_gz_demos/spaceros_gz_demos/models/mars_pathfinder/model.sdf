@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+
+<sdf version="1.9">
+
+  <model name="mars_pathfinder">
+
+    <!-- Fixed model -->
+    <static>true</static>
+
+    <link name="base_link">
+
+      <!-- 3D visual model -->
+      <visual name="pathfinder_visual">
+
+        <geometry>
+          <mesh>
+            <uri>model://mars_pathfinder/meshes/model.dae</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+        </geometry>
+
+      </visual>
+
+      <!-- Simplified collision geometry -->
+      <collision name="body_collision">
+
+        <pose>0 0 0.5 0 0 0</pose>
+
+        <geometry>
+          <box>
+            <size>1.5 1.5 1.0</size>
+          </box>
+        </geometry>
+
+      </collision>
+
+    </link>
+
+  </model>
+
+</sdf>
