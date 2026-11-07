@@ -2,3 +2,6 @@
 /install
 /build
 .vscode/
+/src/x500_control/launch/__pycache__
+
+*.py[cod]
