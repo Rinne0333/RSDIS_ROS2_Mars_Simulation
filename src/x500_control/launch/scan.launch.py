@@ -16,5 +16,12 @@ def generate_launch_description():
             name='offboard_scan',
             output='screen',
             parameters=[LaunchConfiguration('config')],
-        )
+        ),
+        Node(
+            package='x500_control',
+            executable='rover_investigator',
+            name='rover_investigator',
+            output='screen',
+            parameters=[LaunchConfiguration('config')],
+        ),
     ])
