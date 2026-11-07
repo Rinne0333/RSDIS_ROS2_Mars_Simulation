@@ -26,11 +26,11 @@ public:
 	{
 		gravity_ = declare_parameter("gravity", 3.71);
 		// The model's main body mass and prior stable-hover command support this estimate.
-		mass_kg_ = declare_parameter("mass_kg", 16.0);
-		max_thrust_per_rotor_ = declare_parameter("max_thrust_per_rotor", 100.0);
-		takeoff_thrust_per_rotor_ = declare_parameter("takeoff_thrust_per_rotor", 35.0);
+		mass_kg_ = declare_parameter("mass_kg", 2.0);
+		max_thrust_per_rotor_ = declare_parameter("max_thrust_per_rotor", 20.0);
+		takeoff_thrust_per_rotor_ = declare_parameter("takeoff_thrust_per_rotor", 3.8);
 		takeoff_boost_height_ = declare_parameter("takeoff_boost_height", 0.25);
-		hover_thrust_per_rotor_ = declare_parameter("hover_thrust_per_rotor", 30.0);
+		hover_thrust_per_rotor_ = declare_parameter("hover_thrust_per_rotor", 5.0);
 		hover_height_gain_ = declare_parameter("hover_height_gain", 0.8);
 		hover_vertical_damping_ = declare_parameter("hover_vertical_damping", 1.5);
 		max_hover_acceleration_ = declare_parameter("max_hover_acceleration", 1.0);
