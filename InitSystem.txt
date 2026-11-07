@@ -1,0 +1,19 @@
+Init Sistena
+
+1)
+[JAZZY · domínio 30] ~/RSDIS_ROS2_Mars_Simulation_sync
+❯ ros2 launch spaceros_gz_demos mars.launch.xml
+
+2)
+[JAZZY · domínio 30] ~/PX4-Autopilot
+❯ PX4_GZ_STANDALONE=1 PX4_SYS_AUTOSTART=4016 PX4_SIM_MODEL=gz_x500_lidar_down PX4_GZ_MODEL=x500_lidar_down PX4_GZ_WORLD=mars PX4_GZ_MODEL_POSE="8,-2,3.8,0,0,0" make px4_sitl gz_x500_lidar_down
+
+3)
+[JAZZY · domínio 30] ~/RSDIS_ROS2_Mars_Simulation_sync
+❯ MicroXRCEAgent udp4 -p 8888
+
+4)
+[JAZZY · domínio 30] ~/RSDIS_ROS2_Mars_Simulation_sync
+❯ ros2 launch x500_control scan.launch.py
+
+
