@@ -30,10 +30,14 @@ target_include_directories(navigation_node
 )
 
 # ROS 2 dependencies
+find_package(sensor_msgs REQUIRED)
+
 ament_target_dependencies(navigation_node
     rclcpp
     geometry_msgs
     nav_msgs
+    sensor_msgs
+    rcl_interfaces
 )
 
 # Install executable
