@@ -80,6 +80,8 @@ Four terminals, in this order.
 cd ~/mars_ws
 source install/setup.bash
 ros2 launch spaceros_gz_demos mars.launch.xml
+ros2 run ros_gz_bridge parameter_bridge   '/perseverance/ground_truth/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry'
+ros2 run perseverance_navigation navigation_node
 ```
 
 Leave it open. Do not start a second Gazebo. Run the simulation.
