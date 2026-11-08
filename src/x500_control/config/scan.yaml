@@ -1,28 +1,57 @@
 /**:
   ros__parameters:
+    # Must match PX4_GZ_MODEL_POSE
     spawn_x: 8.0
     spawn_y: -2.0
-    spawn_z: 4.5
-    scan_altitude: 10.0
-    scan_length: 12.0
-    scan_width: 12.0
-    lane_spacing: 4.0
-    waypoint_radius: 0.8
-    anomaly_margin: 0.45
+    spawn_z: 3.8
+
+    # Survey. Altitude = highest terrain in the box + clearance (0 = automatic).
+    # The terrain peaks at 26.8 m, so this flies at about 34.8 m.
+    scan_altitude: 0.0
+    clearance: 8.0
+    scan_margin: 5.0          # inset from the edge of the terrain grid (whole map by default)
+    scan_yaw: 1.5708          # NED yaw, east. Keeps the wide side of the image across the lanes
+    waypoint_radius: 1.5
+    stop_on_detect: true      # hold position once /x500/poi appears
+    use_lidar_anomaly: true # one beam cannot find a 2 m object between lanes
+    lane_spacing: 1.5 
+    anomaly_margin: 0.8 
     anomaly_hits: 3
-    stop_on_detect: false
     target_odom_topic: /target/odometry
     target_detect_radius: 6.0
+
+    # Camera (stock PX4 x500_mono_cam_down: 1280x960, hfov 1.74 rad)
+    image_topic: /x500/down_camera
+    image_width: 1280.0
+    image_height: 960.0
+    camera_hfov: 1.74
+
+    # lander_detector: chroma difference from the image's own background, in Lab units
+    chroma_thresh: 16.0
+    min_blob_area: 60.0       # pixels at half resolution
+    max_blob_area: 20000.0
+    downscale: 2
+    ignore_border: 0.05       # fraction of the frame ignored on every side
+    process_hz: 10.0
+    debug_dir: ""             # set to a folder to save frames (hits and every 100th)
+
+    # poi_locator
+    confirm_hits: 3           # detections that must land within confirm_radius
+    confirm_radius: 5.0
+    max_ray_range: 120.0
+    max_pose_age: 0.3
+
+    # Rover
     rover_odom_topic: /perseverance/odometry
     rover_cmd_topic: /perseverance/cmd_vel
-    standoff: 2.5
-    rover_speed: 0.35
+    standoff: 3.0
+    max_slope_deg: 20.0       # cells steeper than this are never entered
+    inflate_cells: 1          # keep-out margin around steep cells, in 1 m cells
+    rover_speed: 0.5
     rover_yaw_gain: 1.2
-    safe_x_min: 0.0
-    safe_x_max: 20.0
-    safe_y_min: -12.0
-    safe_y_max: 8.0
+
     vehicle_local_position: /fmu/out/vehicle_local_position_v1
+    vehicle_attitude: /fmu/out/vehicle_attitude
     vehicle_status: /fmu/out/vehicle_status_v5
     distance_sensor: /fmu/out/distance_sensor
     offboard_control_mode: /fmu/in/offboard_control_mode

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -16,6 +17,7 @@
 #include "px4_msgs/msg/vehicle_local_position.hpp"
 #include "px4_msgs/msg/vehicle_status.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "x500_control/terrain.hpp"
 
 namespace
 {
@@ -44,24 +46,22 @@ void ned_to_world(
 }
 
 std::vector<std::pair<double, double>> lawnmower(
-  double cx, double cy, double length, double width, double spacing)
+  double cx, double cy, double length, double width, double max_spacing)
 {
   std::vector<std::pair<double, double>> points;
   const double x_lo = cx - 0.5 * length;
   const double x_hi = cx + 0.5 * length;
-  const double y_hi = cy + 0.5 * width;
-  bool flip = false;
-  for (double y = cy - 0.5 * width; y <= y_hi + 1e-6; y += spacing) {
-    std::pair<double, double> a{x_lo, y};
-    std::pair<double, double> b{x_hi, y};
-    if (flip) {
-      points.push_back(b);
-      points.push_back(a);
+  const int gaps = std::max(1, static_cast<int>(std::ceil(width / max_spacing)));
+  const double step = width / gaps;           // never wider than max_spacing
+  for (int k = 0; k <= gaps; ++k) {
+    const double y = cy - 0.5 * width + k * step;
+    if (k % 2 == 0) {
+      points.push_back({x_lo, y});
+      points.push_back({x_hi, y});
     } else {
-      points.push_back(a);
-      points.push_back(b);
+      points.push_back({x_hi, y});
+      points.push_back({x_lo, y});
     }
-    flip = !flip;
   }
   return points;
 }
@@ -80,16 +80,39 @@ public:
     hx_ = pd("spawn_x", 8.0);
     hy_ = pd("spawn_y", -2.0);
     hz_ = pd("spawn_z", 4.5);
-    const double alt = pd("scan_altitude", 10.0);
+    const std::string dem_file = ps("dem_file", "");
+    if (!dem_.load(dem_file)) {
+      RCLCPP_FATAL(get_logger(), "Cannot read the terrain grid '%s' (parameter dem_file)", dem_file.c_str());
+      throw std::runtime_error("terrain grid missing");
+    }
+    const double margin = pd("scan_margin", 5.0);
+    const double xa = std::max(pd("scan_x_min", dem_.x_min() + margin), dem_.x_min());
+    const double xb = std::min(pd("scan_x_max", dem_.x_max() - margin), dem_.x_max());
+    const double ya = std::max(pd("scan_y_min", dem_.y_min() + margin), dem_.y_min());
+    const double yb = std::min(pd("scan_y_max", dem_.y_max() - margin), dem_.y_max());
+
+    // One constant altitude above the highest ground under the survey box, so the
+    // drone can never meet a ridge between waypoints.
+    const double clearance = pd("clearance", 8.0);
+    const double fixed_alt = pd("scan_altitude", 0.0);
+    const double ridge = dem_.max_height(xa, xb, ya, yb);
+    const double alt = fixed_alt > 0.0 ? fixed_alt : ridge + clearance;
+    if (alt < ridge + 3.0) {
+      RCLCPP_WARN(
+        get_logger(), "scan_altitude %.1f m is only %.1f m above the highest terrain (%.1f m)",
+        alt, alt - ridge, ridge);
+    }
     climb_ = world_to_ned(hx_, hy_, alt, hx_, hy_, hz_);
     radius_ = pd("waypoint_radius", 0.8);
     margin_ = pd("anomaly_margin", 0.45);
     need_hits_ = pi("anomaly_hits", 3);
-    stop_on_detect_ = pb("stop_on_detect", false);
+    stop_on_detect_ = pb("stop_on_detect", true);
+    use_lidar_ = pb("use_lidar_anomaly", false);
     detect_radius_ = pd("target_detect_radius", 6.0);
+    yaw_ = pd("scan_yaw", 1.5708);
 
     for (const auto & xy : lawnmower(
-        hx_, hy_, pd("scan_length", 12.0), pd("scan_width", 12.0), pd("lane_spacing", 4.0)))
+        0.5 * (xa + xb), 0.5 * (ya + yb), xb - xa, yb - ya, pd("lane_spacing", 20.0)))
     {
       waypoints_.push_back(world_to_ned(xy.first, xy.second, alt, hx_, hy_, hz_));
     }
@@ -104,6 +127,8 @@ public:
     sub_range_ = create_subscription<px4_msgs::msg::DistanceSensor>(
       ps("distance_sensor", "/fmu/out/distance_sensor"), qos,
       std::bind(&OffboardScan::on_range, this, std::placeholders::_1));
+    sub_poi_ = create_subscription<geometry_msgs::msg::PointStamped>(
+      "/x500/poi", 10, [this](geometry_msgs::msg::PointStamped::SharedPtr) {on_poi();});
     sub_target_ = create_subscription<nav_msgs::msg::Odometry>(
       ps("target_odom_topic", "/target/odometry"), 10,
       [this](nav_msgs::msg::Odometry::SharedPtr msg) {
@@ -117,15 +142,17 @@ public:
       ps("trajectory_setpoint", "/fmu/in/trajectory_setpoint"), qos);
     pub_cmd_ = create_publisher<px4_msgs::msg::VehicleCommand>(
       ps("vehicle_command", "/fmu/in/vehicle_command"), qos);
-    pub_poi_ = create_publisher<geometry_msgs::msg::PointStamped>("/x500/poi", 10);
+    pub_poi_ = create_publisher<geometry_msgs::msg::PointStamped>("/x500/poi", 10);   // only used by the optional lidar / target sources
 
     setpoint_ = climb_;
     phase_since_ = now();
     timer_ = create_wall_timer(
       std::chrono::milliseconds(50), std::bind(&OffboardScan::tick, this));
     RCLCPP_INFO(
-      get_logger(), "Scan ready: %zu waypoints, home ENU (%.1f, %.1f, %.1f), altitude %.1f m",
-      waypoints_.size(), hx_, hy_, hz_, alt);
+      get_logger(),
+      "Scan ready: %zu waypoints over x %.0f..%.0f, y %.0f..%.0f, altitude %.1f m "
+      "(highest ground %.1f m)",
+      waypoints_.size(), xa, xb, ya, yb, alt, ridge);
   }
 
 private:
@@ -154,7 +181,7 @@ private:
 
   void on_range(px4_msgs::msg::DistanceSensor::SharedPtr msg)
   {
-    if (phase_ != "scan" || !pos_) {return;}
+    if (!use_lidar_ || phase_ != "scan" || !pos_) {return;}
     const double dist = msg->current_distance;
     if (dist <= 0.05 || dist > 80.0) {return;}
     ranges_.push_back(dist);
@@ -171,7 +198,9 @@ private:
     }
   }
 
-  void mark_poi(double score, const char * source, std::optional<std::array<double, 3>> world)
+  void mark_poi(
+    double score, const char * source, std::optional<std::array<double, 3>> world,
+    bool final = true)
   {
     double wx, wy, wz;
     if (!world) {
@@ -186,11 +215,20 @@ private:
       best_ = std::make_tuple(score, wx, wy, wz);
       RCLCPP_INFO(get_logger(), "POI candidate (%s) world (%.2f, %.2f) score %.2f", source, wx, wy, score);
     }
-    if (stop_on_detect_ && phase_ == "scan") {
+    if (final && stop_on_detect_ && phase_ == "scan") {
       phase_ = "done";
       setpoint_ = {pos_->x, pos_->y, climb_.d};
       publish_poi();
     }
+  }
+
+  // Another node (the image pipeline) found the point of interest: stop and hold.
+  void on_poi()
+  {
+    if (!pos_ || phase_ != "scan" || !stop_on_detect_) {return;}
+    phase_ = "done";
+    setpoint_ = {pos_->x, pos_->y, climb_.d};
+    RCLCPP_INFO(get_logger(), "Point of interest received, holding position");
   }
 
   void publish_poi()
@@ -238,7 +276,7 @@ private:
       static_cast<float>(setpoint_.n),
       static_cast<float>(setpoint_.e),
       static_cast<float>(setpoint_.d)};
-    sp.yaw = 0.f;
+    sp.yaw = static_cast<float>(yaw_);
     pub_sp_->publish(sp);
   }
 
@@ -328,7 +366,9 @@ private:
 
   double hx_{}, hy_{}, hz_{}, radius_{}, margin_{}, detect_radius_{};
   int need_hits_{3}, hit_run_{0}, offboard_ticks_{0};
-  bool stop_on_detect_{false}, poi_sent_{false};
+  bool stop_on_detect_{true}, poi_sent_{false}, use_lidar_{false};
+  double yaw_{1.5708};
+  x500::Dem dem_;
   size_t wp_index_{0};
   Vec3 climb_{}, setpoint_{};
   std::vector<Vec3> waypoints_;
@@ -343,6 +383,7 @@ private:
   rclcpp::Subscription<px4_msgs::msg::VehicleLocalPosition>::SharedPtr sub_pos_;
   rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr sub_status_;
   rclcpp::Subscription<px4_msgs::msg::DistanceSensor>::SharedPtr sub_range_;
+  rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr sub_poi_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_target_;
   rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr pub_mode_;
   rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr pub_sp_;

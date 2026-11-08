@@ -17,9 +17,11 @@ find_package(std_msgs REQUIRED)
 
 add_executable(offboard_scan src/offboard_scan.cpp)
 ament_target_dependencies(offboard_scan rclcpp px4_msgs geometry_msgs nav_msgs)
+target_include_directories(offboard_scan PRIVATE include)
 
 add_executable(rover_investigator src/rover_investigator.cpp)
 ament_target_dependencies(rover_investigator rclcpp geometry_msgs nav_msgs std_msgs)
+target_include_directories(rover_investigator PRIVATE include)
 
 install(TARGETS offboard_scan rover_investigator DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
