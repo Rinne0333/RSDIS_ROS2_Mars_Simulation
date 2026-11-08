@@ -80,13 +80,24 @@ Four terminals, in this order.
 cd ~/mars_ws
 source install/setup.bash
 ros2 launch spaceros_gz_demos mars.launch.xml
-ros2 run ros_gz_bridge parameter_bridge   '/perseverance/ground_truth/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry'
-ros2 run perseverance_navigation navigation_node
 ```
 
 Leave it open. Do not start a second Gazebo. Run the simulation.
 
-### **Terminal 2. Attach PX4 and spawn the drone**
+### **Terminal 2. Ground Truth Perseverance Odometry**
+
+´´'bash
+ros2 run ros_gz_bridge parameter_bridge   '/perseverance/ground_truth/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry'
+´´´ 
+
+### **Terminal 3. Perseverance Navigation Node start**
+
+```bash
+ros2 run perseverance_navigation navigation_node
+```
+
+
+### **Terminal 4. Attach PX4 and spawn the drone**
 
 ```bash
 cd ~/PX4-Autopilot
@@ -110,13 +121,13 @@ Wait until you get the message `INFO  [commander] Ready for takeoff!`. If it doe
 ***Debugging:***
 `commander arm` and `commander takeoff` in the PX4 shell are the manual check that the vehicle itself can fly. 
 
-### **Terminal 3. Bridge, then the mission**
+### **Terminal 5. Bridge, then the mission**
 
 ```bash
 MicroXRCEAgent udp4 -p 8888
 ```
 
-### **Terminal 4. Mission**
+### **Terminal 6. Mission**
 
 Start the agent after PX4 is up.
 
