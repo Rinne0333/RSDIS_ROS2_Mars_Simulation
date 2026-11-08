@@ -1,15 +1,15 @@
 # Fdb version 4
-["bibtex Relatório_RSDIS_G10_1190335_1211059"] 1794166172.37578 "Relatório_RSDIS_G10_1190335_1211059.aux" "Relatório_RSDIS_G10_1190335_1211059.bbl" "Relatório_RSDIS_G10_1190335_1211059" 1794166172.82189 0
+["bibtex Relatório_RSDIS_G10_1190335_1211059"] 1794168984.08163 "Relatório_RSDIS_G10_1190335_1211059.aux" "Relatório_RSDIS_G10_1190335_1211059.bbl" "Relatório_RSDIS_G10_1190335_1211059" 1794168984.54008 0
   "./referencias.bib" 1794165756.05782 7506 8eca8cc0251407154d36c4266a12ba4e ""
   "/usr/share/texlive/texmf-dist/bibtex/bst/ieeetran/IEEEtran.bst" 1440712899 57748 7c8250ecf02814ce6ddc0cdbb63df1dd ""
-  "Relatório_RSDIS_G10_1190335_1211059.aux" 1794166172.75062 3743 33d41f0a7e9d79456b90afc0dde27091 "pdflatex"
+  "Relatório_RSDIS_G10_1190335_1211059.aux" 1794168984.46421 3788 d8163e33341176296ec1740477ac3074 "pdflatex"
   (generated)
   "Relatório_RSDIS_G10_1190335_1211059.bbl"
   "Relatório_RSDIS_G10_1190335_1211059.blg"
   (rewritten before read)
-["pdflatex"] 1794166172.39595 "/home/alexandre-coelho/distrobox-homes/jazzy-home/RSDIS_ROS2_Mars_Simulation_sync/report/Relatório_RSDIS_G10_1190335_1211059.tex" "Relatório_RSDIS_G10_1190335_1211059.pdf" "Relatório_RSDIS_G10_1190335_1211059" 1794166172.82203 0
+["pdflatex"] 1794168984.10257 "/home/alexandre-coelho/distrobox-homes/jazzy-home/RSDIS_ROS2_Mars_Simulation_sync/report/Relatório_RSDIS_G10_1190335_1211059.tex" "Relatório_RSDIS_G10_1190335_1211059.pdf" "Relatório_RSDIS_G10_1190335_1211059" 1794168984.54029 0
   "/etc/texmf/web2c/texmf.cnf" 1794080743.6191 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/alexandre-coelho/distrobox-homes/jazzy-home/RSDIS_ROS2_Mars_Simulation_sync/report/Relatório_RSDIS_G10_1190335_1211059.tex" 1794166171.3541 13330 95dd4a5975c23ca6dcdb4c78cbfbd800 ""
+  "/home/alexandre-coelho/distrobox-homes/jazzy-home/RSDIS_ROS2_Mars_Simulation_sync/report/Relatório_RSDIS_G10_1190335_1211059.tex" 1794168964.78277 14155 c026852fee98468766b914b86e224af9 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/adobe/courier/pcrr8r.tfm" 1136768653 1292 bd42be2f344128bff6d35d98474adfe3 ""
@@ -183,10 +183,10 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1794163917.63858 128028 f533b797fba58d231669ea19e894e23e ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1794163931 6801910 57989c8aa511216b8d5f90fb913d9c14 ""
-  "Relatório_RSDIS_G10_1190335_1211059.aux" 1794166172.75062 3743 33d41f0a7e9d79456b90afc0dde27091 "pdflatex"
-  "Relatório_RSDIS_G10_1190335_1211059.bbl" 1794166172.39182 8372 728ca1b13a3f0731d37e4703ba9a057c "bibtex Relatório_RSDIS_G10_1190335_1211059"
-  "Relatório_RSDIS_G10_1190335_1211059.out" 1794166172.75106 2005 24eafc85686eb4047b8a021e84b9968a "pdflatex"
-  "Relatório_RSDIS_G10_1190335_1211059.tex" 1794166171.3541 13330 95dd4a5975c23ca6dcdb4c78cbfbd800 ""
+  "Relatório_RSDIS_G10_1190335_1211059.aux" 1794168984.46421 3788 d8163e33341176296ec1740477ac3074 "pdflatex"
+  "Relatório_RSDIS_G10_1190335_1211059.bbl" 1794168984.09788 8372 728ca1b13a3f0731d37e4703ba9a057c "bibtex Relatório_RSDIS_G10_1190335_1211059"
+  "Relatório_RSDIS_G10_1190335_1211059.out" 1794168984.46521 2005 24eafc85686eb4047b8a021e84b9968a "pdflatex"
+  "Relatório_RSDIS_G10_1190335_1211059.tex" 1794168964.78277 14155 c026852fee98468766b914b86e224af9 ""
   (generated)
   "Relatório_RSDIS_G10_1190335_1211059.aux"
   "Relatório_RSDIS_G10_1190335_1211059.log"
