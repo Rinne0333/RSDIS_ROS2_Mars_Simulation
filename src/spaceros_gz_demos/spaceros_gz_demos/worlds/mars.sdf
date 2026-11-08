@@ -70,7 +70,7 @@
       <uri>model://mars_pathfinder</uri>
 
         <!-- X Y Z Roll Pitch Yaw -->
-        <pose>25 -70 16.1 0 0 0</pose>
+        <pose>25 -40 10.1 0 0 0</pose>
     </include>
 
   </world>

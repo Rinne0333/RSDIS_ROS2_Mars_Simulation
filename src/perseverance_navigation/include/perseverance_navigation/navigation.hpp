@@ -12,6 +12,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
@@ -56,6 +57,7 @@ private:
 
     bool odometry_received_ = false;
     bool goal_reached_ = false;
+    bool poi_received_ = false;
 
     std::chrono::steady_clock::time_point last_odometry_time_;
 
@@ -90,10 +92,14 @@ private:
     rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_validation_handle_;
     rclcpp::node_interfaces::PostSetParametersCallbackHandle::SharedPtr parameter_update_handle_;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr poi_sub_;
 
     // Odometry
     void odometryCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
     bool odometryIsValid(void) const;
+
+    // Pathfinder Detection
+    void poiCallback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
 
     // Obstacle Detection
     void pointcloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);

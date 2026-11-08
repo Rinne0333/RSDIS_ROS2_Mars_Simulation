@@ -40,11 +40,4 @@ def generate_launch_description():
                 'ignore_blobs': ParameterValue(LaunchConfiguration('ignore_blobs'), value_type=bool),
             }],
         ),
-        Node(
-            package='x500_control',
-            executable='rover_investigator',
-            name='rover_investigator',
-            output='screen',
-            parameters=[LaunchConfiguration('config'), {'dem_file': dem}],
-        ),
     ])

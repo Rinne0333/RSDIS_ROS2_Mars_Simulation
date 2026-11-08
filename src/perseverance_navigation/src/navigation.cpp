@@ -243,6 +243,16 @@ void PerseveranceNavigation::setupRosInterfaces(void)
         }
     );
 
+    // Pathfinder coordinates subscriber
+    poi_sub_ = create_subscription<geometry_msgs::msg::PointStamped>(
+        "/x500/poi",
+        rclcpp::QoS(10).reliable().durability_volatile(),
+        [this](const geometry_msgs::msg::PointStamped::SharedPtr msg)
+        {
+            poiCallback(msg);
+        }
+    );
+
     // Control loop: 10 Hz
     control_timer_ = create_wall_timer(
         100ms,
@@ -315,6 +325,59 @@ bool PerseveranceNavigation::odometryIsValid(void) const
     ).count();
 
     return age <= 0.5;
+}
+
+/**
+ * @brief Receives Pathfinder coordinates from X500
+ * @details Saves the first valid POI as the navigation destination
+ */
+void PerseveranceNavigation::poiCallback(
+    const geometry_msgs::msg::PointStamped::SharedPtr msg)
+{
+    // Ignore additional destinations
+    if (poi_received_)
+    {
+        return;
+    }
+
+    // Validate received coordinates
+    if (!std::isfinite(msg->point.x) ||
+        !std::isfinite(msg->point.y))
+    {
+        RCLCPP_WARN(
+            get_logger(),
+            "Invalid Pathfinder coordinates received"
+        );
+
+        return;
+    }
+
+    // Validate coordinate reference frame
+    if (msg->header.frame_id != "world")
+    {
+        RCLCPP_WARN(
+            get_logger(),
+            "Invalid POI reference frame: %s",
+            msg->header.frame_id.c_str()
+        );
+
+        return;
+    }
+
+    // Save destination
+    target_x_ = msg->point.x;
+    target_y_ = msg->point.y;
+
+    // Enable navigation
+    goal_reached_ = false;
+    poi_received_ = true;
+
+    RCLCPP_INFO(
+        get_logger(),
+        "Pathfinder coordinates received! X: %.2f | Y: %.2f",
+        target_x_,
+        target_y_
+    );
 }
 
 /**
@@ -567,6 +630,19 @@ void PerseveranceNavigation::controlLoop(void)
     {
         // Keep the robot stopped while waiting.
         stopRobot();
+
+        // Wait for Pathfinder coordinates from X500
+        if (!poi_received_)
+        {
+            RCLCPP_INFO_THROTTLE(
+                get_logger(),
+                *get_clock(),
+                5000,
+                "IDLE: Waiting for Pathfinder coordinates..."
+            );
+
+            return;
+        }
 
         // Do not start navigation if the frontal path is blocked.
         if (obstacle_detected_)
