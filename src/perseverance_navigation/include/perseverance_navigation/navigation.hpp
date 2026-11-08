@@ -34,8 +34,8 @@ private:
     double kp_linear_ = 0.5;
     double kp_angular_ = 1.0;
 
-    double max_linear_speed_ = 0.3;
-    double max_angular_speed_ = 0.5;
+    double max_linear_speed_ = 1.0;
+    double max_angular_speed_ = 1.0;
 
     double distance_tolerance_ = 0.2;
     double angle_tolerance_ = 0.2;
@@ -65,9 +65,20 @@ private:
     double detection_min_y_ = -0.30;            // Superior vertical limit of optical refereencial
     double detection_max_y_ = 0.30;             // Inferior vertical limit of optical refereencial
 
+    // Nº obst points in each region
+    int obstacle_points_left_ = 0;
+    int obstacle_points_front_ = 0;
+    int obstacle_points_right_ = 0;
+
     int min_obstacle_points_ = 5;               // Minimum proximity points to confirm an obstacle
 
+    // Obstacle presence in each region.
+    bool obstacle_left_ = false;
+    bool obstacle_front_ = false;
+    bool obstacle_right_ = false;
+
     bool obstacle_detected_ = false;
+
     bool pointcloud_received_ = false;
 
     std::chrono::steady_clock::time_point last_pointcloud_time_;
@@ -86,6 +97,16 @@ private:
 
     // Obstacle Detection
     void pointcloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
+
+    // Sttechart with Perseverance Navigation States
+    enum class NavigationMode
+    {
+        IDLE = 0,
+        GO_TO_GOAL,
+        FOLLOW_OBSTACLE
+    };
+
+    NavigationMode navigation_mode_ = NavigationMode::IDLE;
 
     // Navigation
     void calculateNavigationErrors(void);

@@ -219,7 +219,7 @@ void PerseveranceNavigation::setupRosInterfaces(void)
 {
     // Odometry subscriber
     odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
-        "/perseverance/odometry",
+        "/perseverance/ground_truth/odometry",
         rclcpp::SensorDataQoS(),
         [this](const nav_msgs::msg::Odometry::SharedPtr msg)
         {
@@ -327,6 +327,11 @@ void PerseveranceNavigation::pointcloudCallback(
     int obstacle_points = 0;
     int valid_points = 0;
 
+    // Obstacle counters for each detection region.
+    int left_points = 0;
+    int front_points = 0;
+    int right_points = 0;
+
     try
     {
         // Traverse X, Y, Z coordinates
@@ -351,6 +356,32 @@ void PerseveranceNavigation::pointcloudCallback(
             }
 
             ++valid_points;
+
+            // Common depth and height limits.
+            const bool valid_region =
+                y >= detection_min_y_ &&
+                y <= detection_max_y_ &&
+                z > 0.0 &&
+                z < stop_distance_;
+
+            if (valid_region)
+            {
+                // Assuming the camera uses the optical frame:
+                // X negative = left; X positive = right.
+
+                if (x < -detection_half_width_)
+                {
+                    ++left_points;
+                }
+                else if (x > detection_half_width_)
+                {
+                    ++right_points;
+                }
+                else
+                {
+                    ++front_points;
+                }
+            }
 
             // Check frontal detection region
             const bool inside_region =
@@ -414,6 +445,21 @@ void PerseveranceNavigation::pointcloudCallback(
             );
         }
     }
+
+    // Store detection results.
+    obstacle_points_left_ = left_points;
+    obstacle_points_front_ = front_points;
+    obstacle_points_right_ = right_points;
+
+    // Determine obstacle presence.
+    obstacle_left_ =
+        left_points >= min_obstacle_points_;
+
+    obstacle_front_ =
+        front_points >= min_obstacle_points_;
+
+    obstacle_right_ =
+        right_points >= min_obstacle_points_;
 
     obstacle_detected_ = new_obstacle_state;
 }
@@ -513,6 +559,37 @@ void PerseveranceNavigation::controlLoop(void)
             "Depth camera timeout"
         );
 
+        return;
+    }
+
+    // Navigation State: IDLE
+    if (navigation_mode_ == NavigationMode::IDLE)
+    {
+        // Keep the robot stopped while waiting.
+        stopRobot();
+
+        // Do not start navigation if the frontal path is blocked.
+        if (obstacle_detected_)
+        {
+            RCLCPP_WARN_THROTTLE(
+                get_logger(),
+                *get_clock(),
+                2000,
+                "IDLE: Waiting for a clear path"
+            );
+
+            return;
+        }
+
+        // All required conditions are satisfied.
+        navigation_mode_ = NavigationMode::GO_TO_GOAL;
+
+        RCLCPP_INFO(
+            get_logger(),
+            "Navigation state: IDLE -> GO_TO_GOAL"
+        );
+
+        // Navigation starts on the next control cycle.
         return;
     }
 
