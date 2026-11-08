@@ -24,6 +24,7 @@
           /nasa_perseverance/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo
           /nasa_perseverance/depth_camera@sensor_msgs/msg/Image@gz.msgs.Image
           /nasa_perseverance/depth_camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked
+          /world/mars/model/x500_mono_cam_down_0/link/camera_link/sensor/camera/image@sensor_msgs/msg/Image[gz.msgs.Image
           /model/nasa_ingenuity/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry
           /world/mars/model/nasa_ingenuity/joint_state@sensor_msgs/msg/JointState[gz.msgs.Model
           /model/nasa_ingenuity/joint/MHS_TopBlades_v16/cmd_thrust@std_msgs/msg/Float64@gz.msgs.Double
@@ -57,6 +58,9 @@
     <remap from="/nasa_perseverance/depth_camera" to="/ingenuity/depth_camera"/>
     <remap from="/nasa_perseverance/depth_camera/points" to="/ingenuity/depth_camera/points"/>
     
+    <!-- X500 down camera (check the gz name with: gz topic -l | grep image) -->
+    <remap from="/world/mars/model/x500_mono_cam_down_0/link/camera_link/sensor/camera/image" to="/x500/down_camera"/>
+
     <!-- Ingenuity Remaps -->
     <remap from="/model/nasa_ingenuity/odometry" to="/ingenuity/odometry"/>
     <remap from="/world/mars/model/nasa_ingenuity/joint_state" to="/ingenuity/joint_states"/>

@@ -9,13 +9,13 @@
     # The terrain peaks at 26.8 m, so this flies at about 34.8 m.
     scan_altitude: 0.0
     clearance: 8.0
-    scan_margin: 5.0          # inset from the edge of the terrain grid (whole map by default)
+    scan_margin: 12.0         # inset from the edge of the terrain grid; keeps the image on the map
+    lane_spacing: 15.0        # max metres between lanes (14 lanes, full ground coverage)
     scan_yaw: 1.5708          # NED yaw, east. Keeps the wide side of the image across the lanes
     waypoint_radius: 1.5
     stop_on_detect: true      # hold position once /x500/poi appears
-    use_lidar_anomaly: true # one beam cannot find a 2 m object between lanes
-    lane_spacing: 1.5 
-    anomaly_margin: 0.8 
+    use_lidar_anomaly: false  # one beam cannot find a 2 m object between lanes
+    anomaly_margin: 0.45
     anomaly_hits: 3
     target_odom_topic: /target/odometry
     target_detect_radius: 6.0
@@ -28,10 +28,13 @@
 
     # lander_detector: chroma difference from the image's own background, in Lab units
     chroma_thresh: 16.0
-    min_blob_area: 60.0       # pixels at half resolution
+    min_blob_area: 25.0       # pixels at half resolution (the lander is ~60 px at 100 m slant range)
     max_blob_area: 20000.0
     downscale: 2
     ignore_border: 0.05       # fraction of the frame ignored on every side
+    bg_min_a: 3.0             # ground = pixels with Lab a and b above these (reddish-brown)
+    bg_min_b: 8.0
+    bg_min_fraction: 0.15     # below this share of ground in view, fall back to the plain median
     process_hz: 10.0
     debug_dir: ""             # set to a folder to save frames (hits and every 100th)
 
@@ -39,7 +42,9 @@
     confirm_hits: 3           # detections that must land within confirm_radius
     confirm_radius: 5.0
     max_ray_range: 120.0
-    max_pose_age: 0.3
+    object_min_m: 0.8         # size range of the lander; blobs whose pixel area does not fit it at that
+    object_max_m: 4.5         # range (terrain patches, map edge) are rejected
+    max_pose_age: 2.0         # wall seconds; the sim can run far below real time
 
     # Rover
     rover_odom_topic: /perseverance/odometry

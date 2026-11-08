@@ -3,6 +3,7 @@
 #include <cmath>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "x500_control/terrain.hpp"
 
 namespace
 {
@@ -30,24 +32,6 @@ double wrap(double a)
   return a;
 }
 
-struct Box
-{
-  double xmin, xmax, ymin, ymax;
-};
-
-bool inside(double x, double y, const Box & box)
-{
-  return box.xmin <= x && x <= box.xmax && box.ymin <= y && y <= box.ymax;
-}
-
-bool segment_inside(double ax, double ay, double bx, double by, const Box & box)
-{
-  for (int i = 0; i <= 20; ++i) {
-    const double t = static_cast<double>(i) / 20.0;
-    if (!inside(ax + t * (bx - ax), ay + t * (by - ay), box)) {return false;}
-  }
-  return true;
-}
 }  // namespace
 
 class RoverInvestigator : public rclcpp::Node
@@ -60,9 +44,13 @@ public:
         .allow_undeclared_parameters(true)
         .automatically_declare_parameters_from_overrides(true))
   {
-    box_ = {
-      pd("safe_x_min", 0.0), pd("safe_x_max", 20.0),
-      pd("safe_y_min", -12.0), pd("safe_y_max", 8.0)};
+    dem_file_ = ps("dem_file", "");
+    if (!dem_.load(dem_file_)) {
+      RCLCPP_FATAL(get_logger(), "Cannot read the terrain grid '%s' (parameter dem_file)", dem_file_.c_str());
+      throw std::runtime_error("terrain grid missing");
+    }
+    max_slope_ = pd("max_slope_deg", 20.0);
+    inflate_ = pi("inflate_cells", 1);
     standoff_ = pd("standoff", 2.5);
     speed_ = pd("rover_speed", 0.35);
     yaw_gain_ = pd("rover_yaw_gain", 1.2);
@@ -86,6 +74,11 @@ private:
   {
     if (!has_parameter(name)) {declare_parameter(name, fallback);}
     return get_parameter(name).as_double();
+  }
+  int pi(const std::string & name, int fallback)
+  {
+    if (!has_parameter(name)) {declare_parameter(name, fallback);}
+    return static_cast<int>(get_parameter(name).as_int());
   }
   std::string ps(const std::string & name, const std::string & fallback)
   {
@@ -119,26 +112,20 @@ private:
 
   void plan(double px, double py)
   {
-    const double sx = (*pose_)[0];
-    const double sy = (*pose_)[1];
-    const double dx = sx - px;
-    const double dy = sy - py;
-    const double dist = std::hypot(dx, dy);
-    if (dist < 0.5) {
+    const XY start{(*pose_)[0], (*pose_)[1]};
+    if (!dem_.contains(px, py)) {
+      status("Point of interest is outside the terrain map");
+      return;
+    }
+    if (std::hypot(start.first - px, start.second - py) < standoff_ + 0.5) {
       status("Rover is already at the point of interest");
       return;
     }
-    const double scale = standoff_ / dist;
-    double gx = px + dx * scale;
-    double gy = py + dy * scale;
-    gx = std::min(std::max(gx, box_.xmin), box_.xmax);
-    gy = std::min(std::max(gy, box_.ymin), box_.ymax);
-
-    std::vector<std::pair<double, double>> pts{{sx, sy}};
-    if (!segment_inside(sx, sy, gx, gy, box_)) {
-      pts.emplace_back(0.5 * (box_.xmin + box_.xmax), 0.5 * (box_.ymin + box_.ymax));
+    const auto pts = dem_.plan(start, {px, py}, max_slope_, standoff_, inflate_);
+    if (pts.size() < 2) {
+      status("No path under the slope limit (raise max_slope_deg or lower inflate_cells)");
+      return;
     }
-    pts.emplace_back(gx, gy);
     waypoints_.assign(pts.begin() + 1, pts.end());
 
     nav_msgs::msg::Path path;
@@ -149,12 +136,15 @@ private:
       pose.header = path.header;
       pose.pose.position.x = p.first;
       pose.pose.position.y = p.second;
+      pose.pose.position.z = dem_.height(p.first, p.second);
       pose.pose.orientation.w = 1.0;
       path.poses.push_back(pose);
     }
     pub_path_->publish(path);
     RCLCPP_INFO(
-      get_logger(), "Path planned, %zu legs, goal (%.1f, %.1f)", waypoints_.size(), gx, gy);
+      get_logger(), "Path planned: %zu legs, %.0f m (straight line %.0f m), goal (%.1f, %.1f)",
+      waypoints_.size(), x500::Dem::length(pts), std::hypot(start.first - px, start.second - py),
+      pts.back().first, pts.back().second);
     status("Path planned");
   }
 
@@ -190,7 +180,11 @@ private:
     pub_cmd_->publish(cmd);
   }
 
-  Box box_{};
+  using XY = x500::XY;
+  x500::Dem dem_;
+  std::string dem_file_;
+  double max_slope_{20.0};
+  int inflate_{1};
   double standoff_{}, speed_{}, yaw_gain_{};
   std::optional<std::array<double, 3>> pose_;
   std::optional<std::array<double, 2>> poi_;

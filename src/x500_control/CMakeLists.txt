@@ -14,6 +14,9 @@ find_package(px4_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
 
 add_executable(offboard_scan src/offboard_scan.cpp)
 ament_target_dependencies(offboard_scan rclcpp px4_msgs geometry_msgs nav_msgs)
@@ -23,7 +26,16 @@ add_executable(rover_investigator src/rover_investigator.cpp)
 ament_target_dependencies(rover_investigator rclcpp geometry_msgs nav_msgs std_msgs)
 target_include_directories(rover_investigator PRIVATE include)
 
-install(TARGETS offboard_scan rover_investigator DESTINATION lib/${PROJECT_NAME})
+add_executable(lander_detector src/lander_detector.cpp)
+ament_target_dependencies(lander_detector rclcpp sensor_msgs geometry_msgs cv_bridge)
+target_include_directories(lander_detector PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(lander_detector ${OpenCV_LIBS})
+
+add_executable(poi_locator src/poi_locator.cpp)
+ament_target_dependencies(poi_locator rclcpp px4_msgs geometry_msgs)
+target_include_directories(poi_locator PRIVATE include)
+
+install(TARGETS offboard_scan rover_investigator lander_detector poi_locator DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
 ament_package()
