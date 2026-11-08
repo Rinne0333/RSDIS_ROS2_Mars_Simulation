@@ -14,7 +14,7 @@ git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 cd PX4-Autopilot
 # deps once, if you have not already:
 # bash ./Tools/setup/ubuntu.sh
-make px4_sitl gz_x500_lidar_down
+make px4_sitl gz_x500_mono_cam_down
 ```
 
 Inside the jazzy container, `$HOME` is already `.../jazzyDesktop`, so the tree is `$HOME/PX4-Autopilot`.
