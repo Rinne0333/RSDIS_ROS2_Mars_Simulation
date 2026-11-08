@@ -58,10 +58,10 @@ A simulação foi executada com ROS2 Jazzy e Gazebo Harmonic \cite{macenski2022,
 \subsection{X500 e localização do Pathfinder}
 
 \textit{Controlo de voo.}
-O X500 percorre a área de busca seguindo pontos de passagem. O nó de missão envia referências de posição ao PX4 em modo \textit{Offboard}. O autopiloto trata do controlo de voo a partir dessas referências \cite{px4-offboard}. Na configuração de arranque do X500, o Micro XRCE-DDS Agent liga o cliente PX4 à rede DDS. A interface disponibiliza nos tópicos \texttt{/fmu/out/} os dados de posição local e atitude usados para localizar o alvo \cite{px4-ros2,xrce-agent}.
+Após muitos problemas com Ingenuity e as suas Swashplats, mudou-se para o X500, que contem o seu próprio autopiloto através de PX4. Este percorre a área de busca seguindo pontos de passagem. O nó de missão envia referências de posição ao PX4 em modo \textit{Offboard}. O autopiloto trata do controlo de voo a partir dessas referências \cite{px4-offboard}. Na configuração de arranque do X500, o Micro XRCE-DDS Agent liga o cliente PX4 à rede DDS. A interface disponibiliza nos tópicos \texttt{/fmu/out/} os dados de posição local e atitude usados para localizar o alvo \cite{px4-ros2,xrce-agent}.
 
 \textit{Deteção na imagem.}
-O YOLO processa cada imagem da câmara e estima caixas delimitadoras e pontuações de confiança para as classes detetadas \cite{yolo}. Neste projeto, a classe de interesse é o Pathfinder. A deteção indica onde o objeto aparece na imagem. O passo seguinte usa esse ponto em píxeis para estimar a posição física do alvo.
+O YOLO processa cada imagem da câmara e estima caixas delimitadoras e pontuações de confiança para as classes detetadas \cite{yolo}. Neste projeto, a classe de interesse é o Pathfinder, mas facilmente pode se adicionar outros objetos. A deteção indica onde o objeto aparece na imagem. O passo seguinte usa esse ponto em píxeis para estimar a posição física do alvo.
 
 \textit{Projeção para o mundo.}
 No pacote \texttt{x500\_control}, o nó \texttt{PoiLocator} recebe a deteção e usa a posição e a atitude provenientes do PX4 para transformar o raio de observação para o referencial do mundo. A estimativa corresponde à interseção desse raio com a representação da elevação do terreno. A transformação tem em conta a convenção NED (norte, este, baixo) usada pelo PX4 e a convenção ENU (este, norte, cima) usada na representação do mundo \cite{px4-ros2}. Deteções sucessivas que resultem em posições próximas permitem confirmar o alvo. O ponto confirmado é publicado em \texttt{/x500/poi} como uma mensagem \texttt{geometry\_msgs/msg/PointStamped}, com o referencial \texttt{world}. O nó pode disponibilizar as estimativas intermédias em \texttt{/x500/blob\_world}, enquanto o rover recebe o ponto confirmado no tópico de missão \cite{point-stamped}.
@@ -140,6 +140,8 @@ Paragem perante obstáculos & A deteção estava ativa. O percurso ensaiado não
 \end{table}
 
 \subsection{Discussão}
+
+Durante o desenvolvimento de Ingenuity \cite{spaceros-demo} houve muitos bloqueios no desenvolvimento, desde o package inicial apenas ter telemetria para duas dimensões então não tinha controlo de altitude, os platôs cíclicos não tinham flexibilidade suficiente para controlar a atitude do helicópterom causando uma constante derivação quando entrava em "hover mode". A mudança para o X500 permitiu superar esses bloqueios, mas introduziu uma dependência do autopilot PX4 \cite{px4-ros2}. O nó de missão do X500 não podia aceder à pose do Gazebo, pelo que a estimativa da posição do alvo dependia da pose fornecida pelo PX4.
 
 Durante o desenvolvimento do Perseverance, observou-se uma divergência entre a rotação física no simulador e a estimativa da odometria das rodas. Num ensaio de diagnóstico, a variação de orientação foi de cerca de $5{,}5^\circ$ segundo a pose do Gazebo e de $51^\circ$ segundo a odometria das rodas. O ensaio mostrou que a orientação estimada pelas rodas podia divergir substancialmente da orientação do modelo. Na configuração funcional, o controlador passou a usar diretamente a pose disponibilizada pelo simulador. Esta escolha facilitou a integração, mas torna a localização do rover dependente do acesso ao estado simulado.
 
