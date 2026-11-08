@@ -1,0 +1,10 @@
+COmo ligar o Perseverance:
+
+1º Ligar Gazebo:
+ros2 launch spaceros_gz_demos mars.launch.xml
+
+2º Bridge:
+ros2 run ros_gz_bridge parameter_bridge   '/perseverance/ground_truth/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry'
+
+3º ros2 run no perseverance navigation com parameters de target x/y:
+ros2 run perseverance_navigation navigation_node   --ros-args   -p target_x:=100.0   -p target_y:=-78.0
