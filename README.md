@@ -4,9 +4,9 @@ The drone is a PX4 `x500_lidar_down` flying in the existing Space ROS Mars world
 
 ```text
 ~/PX4-Autopilot          PX4 firmware and Gazebo models. Not inside the ROS workspace.
-~/mars_ws/src/px4_msgs   ROS 2 messages for that firmware.
-~/mars_ws/src/x500_control
-~/mars_ws/src/spaceros_gz_demos
+~/RSDIS_ROS2_Mars_Simulation/src/px4_msgs   ROS 2 messages for that firmware.
+~/RSDIS_ROS2_Mars_Simulation/src/x500_control
+~/RSDIS_ROS2_Mars_Simulation/src/spaceros_gz_demos
 ```
 
 ## 1. One-time install
@@ -36,10 +36,10 @@ Ctrl+C once the first simulation window opens. That build is only to compile SIT
 ### ROS packages
 
 ```bash
-cd ~/mars_ws/src
+cd ~/RSDIS_ROS2_Mars_Simulation/src
 git clone https://github.com/PX4/px4_msgs.git
 
-cd ~/mars_ws
+cd ~/RSDIS_ROS2_Mars_Simulation
 rm -rf build/px4_msgs install/px4_msgs log/px4_msgs
 colcon build --packages-select px4_msgs x500_control
 source install/setup.bash
@@ -47,7 +47,7 @@ source install/setup.bash
 
 Do not pass `--symlink-install` for `px4_msgs`. If the build says `existing path cannot be removed: Is a directory`, run the `rm -rf` line again and rebuild.
 
-`px4_msgs` must be the checkout that matches this PX4 tree. If a message field fails to compile, `cd ~/mars_ws/src/px4_msgs && git pull`, then rebuild both packages.
+`px4_msgs` must be the checkout that matches this PX4 tree. If a message field fails to compile, `cd ~/RSDIS_ROS2_Mars_Simulation/src/px4_msgs && git pull`, then rebuild both packages.
 
 ### Micro XRCE-DDS Agent
 
@@ -65,7 +65,7 @@ sudo make install && sudo ldconfig
 `x500_lidar_down` includes `x500` and `model://LW20`. The stock `load_world.launch.py` replaces `GZ_SIM_RESOURCE_PATH` with only the Mars models, which produces `Unable to find uri[x500]`.
 
 ```bash
-cd ~/mars_ws
+cd ~/RSDIS_ROS2_Mars_Simulation
 colcon build --packages-select spaceros_gz_demos
 source install/setup.bash
 ```
@@ -77,7 +77,7 @@ Four terminals, in this order.
 ### **Terminal 1. Mars and Perseverance**
 
 ```bash
-cd ~/mars_ws
+cd ~/RSDIS_ROS2_Mars_Simulation
 source install/setup.bash
 ros2 launch spaceros_gz_demos mars.launch.xml
 ```
@@ -93,6 +93,7 @@ ros2 run ros_gz_bridge parameter_bridge   '/perseverance/ground_truth/odometry@n
 ### **Terminal 3. Perseverance Navigation Node start**
 
 ```bash
+cd ~/RSDIS_ROS2_Mars_Simulation
 ros2 run perseverance_navigation navigation_node
 ```
 
@@ -132,7 +133,7 @@ MicroXRCEAgent udp4 -p 8888
 Start the agent after PX4 is up.
 
 ```bash
-cd ~/mars_ws
+cd ~/RSDIS_ROS2_Mars_Simulation
 source install/setup.bash
 ros2 launch x500_control scan.launch.py
 ```
@@ -177,7 +178,7 @@ With the spawn at `(8, -2)` that is world X from `-32` to `48` and Y from `-42` 
 After any edit to `scan.yaml` or the C++ sources:
 
 ```bash
-cd ~/mars_ws
+cd ~/RSDIS_ROS2_Mars_Simulation
 colcon build --packages-select x500_control
 source install/setup.bash
 ros2 launch x500_control scan.launch.py
@@ -209,7 +210,6 @@ ros2 topic pub --once /x500/poi geometry_msgs/msg/PointStamped \
 
 | Symptom | Fix |
 |---|---|
-| `mars.launch.xml` mismatched tag | The bridge `args="` quote was left open, or an `<include>` was pasted inside the `<node>` |
 | `px4_msgs` symlink error | `rm -rf build/px4_msgs install/px4_msgs log/px4_msgs` and build again without `--symlink-install` |
 | `MicroXRCEAgent: command not found` | Install `https://github.com/eProsima/Micro-XRCE-DDS-Agent.git` and source `/opt/ros/jazzy/setup.bash` |
 | `Preflight Fail: barometer` / `No connection to the GCS` | Sensor plugins missing, or the four `param set` lines above were not saved |
