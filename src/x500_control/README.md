@@ -77,12 +77,12 @@ cd ~/PX4-Autopilot
 # pkill -f 'bin/px4'
 
 PX4_GZ_STANDALONE=1 \
-PX4_SYS_AUTOSTART=4016 \
-PX4_SIM_MODEL=gz_x500_lidar_down \
-PX4_GZ_MODEL=x500_lidar_down \
+PX4_SYS_AUTOSTART=4014 \
+PX4_SIM_MODEL=gz_x500_mono_cam_down \
+PX4_GZ_MODEL=x500_mono_cam_down \
 PX4_GZ_WORLD=mars \
 PX4_GZ_MODEL_POSE="8,-2,3.8,0,0,0" \
-make px4_sitl gz_x500_lidar_down
+make px4_sitl gz_x500_mono_cam_down
 ```
 
 `4016` is the `x500_lidar_down` airframe.
