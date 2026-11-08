@@ -2,15 +2,15 @@
 <sdf version="1.6">
   <model name="nasa_ingenuity">
 	<pose>0 -2.5 3.6 3.14 0 0</pose>
-	<link name="base_link"> </link>
+	<link name="base_link"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
     <link name="Body_MHS_MainBody_v16">
         <inertial>
-            <mass>2</mass>
+            <mass>0.250000000</mass>
             <inertia>
-                <ixx>1</ixx>
-                <iyy>1</iyy>
-                <izz>1</izz>
-            </inertia>
+                <ixx>0.125000000</ixx>
+                <iyy>0.125000000</iyy>
+                <izz>0.125000000</izz>
+            <ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia>
         </inertial>
         <visual name="VisGeom_MHS_MainBody_v16">
             <geometry>
@@ -61,11 +61,11 @@
         </sensor>
     </link>
 
-    <link name="Swashplate1"> </link>
-    <link name="Swashplate2"> </link>
+    <link name="Swashplate1"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
+    <link name="Swashplate2"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <link name="Body_MHS_TopBlades_v16">
-        <visual name="VisGeom_MHS_TopBlades_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_TopBlades_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_TopBlades_v16.glb</uri>
@@ -82,7 +82,7 @@
     </link>
 
     <link name="Body_MHS_BottomBlades_v16">
-        <visual name="VisGeom_MHS_BottomBlades_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_BottomBlades_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_BottomBlades_v16.glb</uri>
@@ -98,10 +98,10 @@
         </collision>
     </link>
 
-    <link name="Body_Joint_Leg02_Axis"> </link>
+    <link name="Body_Joint_Leg02_Axis"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <link name="Body_MHS_Leg02_v16">
-        <visual name="VisGeom_MHS_Leg02_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_Leg02_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_Leg02_v16.glb</uri>
@@ -117,10 +117,10 @@
         </collision>
     </link>
 
-    <link name="Body_Joint_Leg01_Axis"> </link>
+    <link name="Body_Joint_Leg01_Axis"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <link name="Body_MHS_Leg01_v16">
-        <visual name="VisGeom_MHS_Leg01_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_Leg01_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_Leg01_v16.glb</uri>
@@ -136,10 +136,10 @@
         </collision>
     </link>
 
-    <link name="Body_Joint_Leg03_Axis"> </link>
+    <link name="Body_Joint_Leg03_Axis"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <link name="Body_MHS_Leg03_v16">
-        <visual name="VisGeom_MHS_Leg03_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_Leg03_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_Leg03_v16.glb</uri>
@@ -155,10 +155,10 @@
         </collision>
     </link>
 
-    <link name="Body_Joint_Leg04_Axis"> </link>
+    <link name="Body_Joint_Leg04_Axis"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <link name="Body_MHS_Leg04_v16">
-        <visual name="VisGeom_MHS_Leg04_v16">
+        <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial><visual name="VisGeom_MHS_Leg04_v16">
             <geometry>
                 <mesh>
                     <uri>model://nasa_ingenuity/meshes/MHS_Leg04_v16.glb</uri>
@@ -174,7 +174,7 @@
         </collision>
     </link>
 
-	<link name="Frame_MHS_NAVCAM"> </link>
+	<link name="Frame_MHS_NAVCAM"> <inertial><mass>0.125000000</mass><inertia><ixx>0.125000000</ixx><iyy>0.125000000</iyy><izz>0.125000000</izz><ixy>0.000000000</ixy><ixz>0.000000000</ixz><iyz>0.000000000</iyz></inertia></inertial></link>
 
     <joint name="MHS_MainBody_v16" type="fixed">
         <parent>base_link</parent>
@@ -294,21 +294,15 @@
         <child>Frame_MHS_NAVCAM</child>
     </joint>
 
-    <plugin
-        filename="gz-sim-odometry-publisher-system"
-        name="gz::sim::systems::OdometryPublisher">
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
         <dimensions>3</dimensions>
     </plugin>
 
-    <plugin
-        filename="gz-sim-joint-state-publisher-system"
-        name="gz::sim::systems::JointStatePublisher">
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
         <topic>/world/mars/model/nasa_ingenuity/joint_state</topic>
     </plugin>
 
-    <plugin
-        filename="gz-sim-thruster-system"
-        name="gz::sim::systems::Thruster">
+    <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
         <joint_name>MHS_TopBlades_v16</joint_name>
         <thrust_coefficient>0.0005</thrust_coefficient>
         <fluid_density>1</fluid_density>
@@ -318,9 +312,7 @@
         <min_thrust_cmd>0</min_thrust_cmd>
     </plugin>
 
-    <plugin
-        filename="gz-sim-thruster-system"
-        name="gz::sim::systems::Thruster">
+    <plugin filename="gz-sim-thruster-system" name="gz::sim::systems::Thruster">
         <joint_name>MHS_BottomBlades_v16</joint_name>
         <thrust_coefficient>-0.0005</thrust_coefficient>
         <fluid_density>1</fluid_density>
@@ -330,12 +322,11 @@
         <min_thrust_cmd>0</min_thrust_cmd>
     </plugin>
 
-    <plugin filename="gz-sim-linearbatteryplugin-system"
-        name="gz::sim::systems::LinearBatteryPlugin">
+    <plugin filename="gz-sim-linearbatteryplugin-system" name="gz::sim::systems::LinearBatteryPlugin">
         <battery_name>ingenuity_battery</battery_name>
         <power_draining_topic>/model/nasa_ingenuity/joint/MHS_TopBlades_v16/cmd_thrust</power_draining_topic>
         <power_draining_topic>/model/nasa_ingenuity/joint/MHS_BottomBlades_v16/cmd_thrust</power_draining_topic>
-        <!-- Ingenuity has a 6 cell LiPo battery pack -->
+        
         <voltage>22.2</voltage>
         <open_circuit_voltage_constant_coef>22.2</open_circuit_voltage_constant_coef>
         <capacity>1.2009</capacity>
@@ -347,9 +338,7 @@
         <recharge_by_topic>true</recharge_by_topic>
     </plugin>
 
-    <plugin
-        filename="gz-sim-joint-position-controller-system"
-        name="gz::sim::systems::JointPositionController">
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
         <joint_name>Swashplate1_Joint</joint_name>
         <topic>nasa_ingenuity/swashplate1_joint_cmd</topic>
         <p_gain>1</p_gain>
@@ -361,9 +350,7 @@
         <cmd_min>-1</cmd_min>
     </plugin>
 
-    <plugin
-        filename="gz-sim-joint-position-controller-system"
-        name="gz::sim::systems::JointPositionController">
+    <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
         <joint_name>Swashplate2_Joint</joint_name>
         <topic>nasa_ingenuity/swashplate2_joint_cmd</topic>
         <p_gain>1</p_gain>

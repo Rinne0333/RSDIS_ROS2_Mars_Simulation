@@ -1,0 +1,108 @@
+# =============================================================================
+# INGENUITY NAVIGATION - Configuracao de uma missao A -> B
+# =============================================================================
+# Utilizacao:
+#   ros2 run ingenuity_navigation navigation_node --ros-args \
+#     --params-file src/ingenuity_navigation/config/mission.yaml \
+#     -p arm:=true -p goal_dx:=3.0 -p goal_dy:=0.0
+#
+# A = posicao estabilizada do helicóptero no inicio da missao.
+# B = A + (goal_dx, goal_dy) NO REFERENCIAL DA ODOMETRIA.
+# As unidades estao indicadas ao lado de cada parametro.
+#
+# Nota: os valores sao pontos de partida. Nao foram afinados em voo.
+# =============================================================================
+ingenuity_navigation:
+  ros__parameters:
+    # Se /clock estiver bridged do Gazebo, podes ativar use_sim_time: true.
+    # O algoritmo usa diretamente os timestamps da odometria e um watchdog
+    # monotónico, pelo que nao depende da existencia de /clock.
+    use_sim_time: false
+
+    # Missao: o arranque por defeito e SEMPRE desarmado.
+    arm: false
+    goal_dx: 3.0             # metros; destino B = A + dx (eixo odom X)
+    goal_dy: 0.0             # metros; destino B = A + dy (eixo odom Y)
+    flight_height: 2.0       # metros acima da altitude do ponto A
+
+    # Maquina de estados.
+    settle_seconds: 1.5      # esperar paragem no solo ANTES de capturar A
+    takeoff_speed: 0.55      # m/s, subida progressiva da referencia
+    landing_speed: 0.30      # m/s, descida progressiva da referencia
+    hover_a_seconds: 2.0    # estabilidade XY continua durante 2 s
+    hover_b_seconds: 2.0
+
+    # 3) ROTATE: rodar proa para B, mantendo XY e Z.
+    # Se false, salta ROTATE e faz navegacao XY diretamente.
+    rotate_before_navigation: true
+    rotate_hold_seconds: 1.0
+    yaw_tolerance_deg: 5.0
+    yaw_rate_tolerance: 0.12
+    rotate_timeout: 20.0
+
+    # 4) NAVIGATE: referencia avanca devagar na reta A->B.
+    navigation_speed: 0.40        # m/s
+    max_target_lead_m: 0.65      # max. distancia referencia a frente do drone
+    brake_radius: 1.0           # entrada em BRAKE, metros a B
+    hover_a_radius: 0.45    # so sair de TAKEOFF se XY estiver perto do A
+    hover_a_speed: 0.35     # e velocidade horizontal baixa (m/s)
+    max_takeoff_drift: 2.0 # abortar cedo se fugir do A durante subida
+    arrival_radius: 0.30     # tolerancia XY em metros
+    arrival_speed: 0.35      # velocidade horizontal maxima para chegada
+    stage_timeout: 60.0      # segundos de SIMULACAO por etapa
+    max_xy_radius: 5.0       # geofence proxima: destino 3 m + margem 2 m
+    max_overheight: 2.0      # altitude extra maxima acima da altura de voo
+
+    # Controlador vertical: saida = empuxo TOTAL em newtons.
+    # Assumimos massa total de 2 kg e gravidade 9.81 m/s2 no world mars.sdf.
+    # Se mudares a fisica do SDF, recalcula hover_total = massa * gravidade.
+    hover_total: 19.62
+    kp_z: 4.0
+    ki_z: 0.0
+    kd_z: 5.0
+    integral_limit_z: 5.0
+    max_total_thrust: 70.0
+
+    # Controlador horizontal: erro XY -> aceleracao -> roll e pitch.
+    kp_xy: 0.25            # ganho XY mais suave para reduzir saturacao
+    kd_xy: 1.00            # amortecimento da velocidade horizontal
+    max_tilt_rad: 0.06     # limitar inclinacao pedida
+    gravity: 9.81
+    thrust_axis_z: -1.0      # eixos das helices no SDF (0, 0, -1)
+
+    # Controlador de atitude: roll/pitch -> swashplate 1 e swashplate 2.
+    # O sentido fisico do comando no Gazebo necessita de calibracao.
+    kp_att: 0.5
+    kd_att: 0.15
+    # Sinais de SW ainda nao validados: V2 continuou com deriva XY.
+    # NAO assumir que inverter sinais resolve instabilidade fisica.
+    swashplate_1_sign: -1.0
+    swashplate_2_sign: -1.0
+    max_swash_rad: 0.03      # rad: amplitude menor nos primeiros voos
+
+    # Yaw: PD -> empuxo diferencial nos 2 rotores coaxiais.
+    # IMPORTANTE: este modelo SDF pode NAO gerar binario de yaw com
+    # diferencas de empuxo; sem binario fisico, ROTATE terminara por timeout.
+    enable_yaw_control: true
+    kp_yaw: 1.4                   # N/rad
+    kd_yaw: 0.5                   # N/(rad/s)
+    max_yaw_diff_n: 1.5          # N por rotor
+    yaw_differential_sign: 1.0   # -1.0 se a resposta observada estiver invertida
+
+    # Durante TAKEOFF, reduzir a agressividade do controlador horizontal.
+    # Ganhos XY sao multiplicados por este fator (0 desativa XY, 1 normal).
+    takeoff_xy_gain_scale: 0.35
+
+    # Distribuicao do empuxo total e limite por rotor.
+    top_fraction: 0.5
+    max_thrust_per_rotor: 35.0
+
+    # Watchdogs / validacao da odometria.
+    control_hz: 20.0
+    odom_timeout_wall_s: 2.0 # segundos REAIS sem odometria valida
+    max_odom_sample_gap_s: 0.75  # intervalo max. entre amostras em sim time
+    max_pose_jump_m: 1.5
+    max_invalid_samples: 3
+    min_lift_axis_z: 0.65    # bloquear se thrust apontar muito de lado
+    odom_frame: "nasa_ingenuity/odom"
+    body_frame: "nasa_ingenuity/base_footprint"
